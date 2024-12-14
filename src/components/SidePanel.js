@@ -15,7 +15,7 @@ export default function SidePanel() {
     },
     templates: {
       title: "Templates",
-      options: ["Smiley_Faces", "Leaves"]
+      options: []
     },
     polarCamels: {
       title: "Polar Camels",

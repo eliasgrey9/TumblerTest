@@ -122,19 +122,9 @@ const Scene = ({ onUvAspectChange }) => {
 
       const loadTexture = async () => {
         try {
-          if (selectedTexture === 'diamond_pattern') {
-            const svgString = createDiamondPattern(uvDimensions, textureScale);
-            const texture = await createSvgTexture(svgString);
-            await applyTextureToMesh(texture);
-          } else {
-            const textureLoader = new THREE.TextureLoader();
-            textureLoader.load(`/images/${selectedTexture}.jpg`, (texture) => {
-              texture.wrapS = THREE.RepeatWrapping;
-              texture.wrapT = THREE.RepeatWrapping;
-              texture.repeat.set(1, 1);
-              applyTextureToMesh(texture);
-            });
-          }
+          const svgString = createDiamondPattern(uvDimensions, textureScale);
+          const texture = await createSvgTexture(svgString);
+          await applyTextureToMesh(texture);
         } catch (error) {
           console.error('Error loading texture:', error);
         }
