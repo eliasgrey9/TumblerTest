@@ -11,10 +11,11 @@ export function ModelProvider({ children }) {
   const setModelAndTexture = (model, isTexture = false) => {
     if (isTexture) {
       setSelectedTexture(model);
-      setTextureScale(1);
+      setTextureScale(8);
     } else {
       setSelectedModel(model);
       setSelectedTexture(null);
+      setTextureScale(1);
     }
   };
 

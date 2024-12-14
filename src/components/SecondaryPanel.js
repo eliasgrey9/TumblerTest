@@ -1,7 +1,7 @@
 import React from "react";
 import { useModel } from "../context/ModelContext";
 import TextureScaler from "./TextureScaler";
-import { exportScaledTexture } from "../utils/exportUtils";
+import { exportScaledPattern } from "../utils/exportUtils";
 
 export default function SecondaryPanel({ title, options, onClose }) {
   const { setModelAndTexture, selectedTexture, uvDimensions, textureScale } = useModel();
@@ -15,9 +15,25 @@ export default function SecondaryPanel({ title, options, onClose }) {
   };
 
   const handleExport = () => {
-    if (selectedTexture && uvDimensions) {
-      exportScaledTexture(selectedTexture, uvDimensions, textureScale);
+    if (uvDimensions) {
+      exportScaledPattern(uvDimensions, textureScale);
     }
+  };
+
+  const renderPatternPreview = () => {
+    return (
+      <div className="bg-white p-4 rounded-lg">
+        <svg width="100" height="100" viewBox="0 0 100 100">
+          <path 
+            d="M50,0 L100,50 L50,100 L0,50 Z" 
+            fill="black"
+          />
+        </svg>
+        <p className="text-sm mt-2 text-center text-black">
+          Diamond Pattern
+        </p>
+      </div>
+    );
   };
 
   return (
@@ -34,6 +50,30 @@ export default function SecondaryPanel({ title, options, onClose }) {
         </div>
         {title === "Templates" ? (
           <div className="grid grid-cols-1 gap-4">
+            <div className="space-y-2">
+              <div 
+                className={`cursor-pointer transition-all ${
+                  selectedTexture === 'diamond_pattern' 
+                    ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-gray-700' 
+                    : 'hover:opacity-80'
+                }`}
+                onClick={() => handleSelection('diamond_pattern')}
+              >
+                {renderPatternPreview()}
+              </div>
+              {selectedTexture === 'diamond_pattern' && (
+                <div className="space-y-2">
+                  <TextureScaler textureId="diamond_pattern" />
+                  <button
+                    onClick={handleExport}
+                    className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded transition-colors"
+                  >
+                    Export SVG
+                  </button>
+                </div>
+              )}
+            </div>
+
             {options.map((option, index) => (
               <div key={index} className="space-y-2">
                 <div 
