@@ -8,7 +8,7 @@ import { useModel } from "../context/ModelContext";
 
 const Scene = () => {
   const objRef = useRef();
-  const { selectedModel, selectedTexture } = useModel();
+  const { selectedModel, selectedTexture, textureScale, setUVDimensions } = useModel();
 
   const obj = useLoader(OBJLoader, `/images/${selectedModel}.obj`);
   const texture = selectedTexture ? 
@@ -18,14 +18,74 @@ const Scene = () => {
     if (obj) {
       obj.traverse((child) => {
         if (child.isMesh) {
-          child.material = new THREE.MeshStandardMaterial({
-            color: 0x808080,
-            map: texture
+          const geometry = child.geometry;
+          const uvAttribute = geometry.attributes.uv;
+          const positionAttribute = geometry.attributes.position;
+
+          // Find UV bounds
+          let minU = Infinity, maxU = -Infinity;
+          let minV = Infinity, maxV = -Infinity;
+
+          for (let i = 0; i < uvAttribute.count; i++) {
+            const u = uvAttribute.getX(i);
+            const v = uvAttribute.getY(i);
+            minU = Math.min(minU, u);
+            maxU = Math.max(maxU, u);
+            minV = Math.min(minV, v);
+            maxV = Math.max(maxV, v);
+          }
+
+          // Calculate real-world dimensions
+          const width = (maxU - minU) * 2048; // Base resolution multiplier
+          const height = (maxV - minV) * 2048;
+
+          // Store UV dimensions in context
+          setUVDimensions({
+            width,
+            height,
+            aspectRatio: width / height
           });
         }
       });
     }
-  }, [obj, texture]);
+  }, [obj, setUVDimensions]);
+
+  useEffect(() => {
+    if (obj && texture) {
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(textureScale, textureScale);
+      texture.needsUpdate = true;
+
+      obj.traverse((child) => {
+        if (child.isMesh) {
+          const geometry = child.geometry;
+          for (let i = 0; i < geometry.attributes.position.count; i++) {
+            geometry.attributes.normal.array[i * 3] *= -1;
+            geometry.attributes.normal.array[i * 3 + 1] *= -1;
+            geometry.attributes.normal.array[i * 3 + 2] *= -1;
+          }
+          geometry.attributes.normal.needsUpdate = true;
+
+          const outsideMaterial = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            map: texture,
+            side: THREE.FrontSide,
+          });
+
+          const insideMaterial = new THREE.MeshStandardMaterial({
+            color: 0x808080,
+            side: THREE.BackSide,
+            metalness: 0.1,
+            roughness: 0.5
+          });
+
+          child.material = [outsideMaterial, insideMaterial];
+          child.material.needsUpdate = true;
+        }
+      });
+    }
+  }, [obj, texture, textureScale]);
 
   return (
     <group>

@@ -5,13 +5,16 @@ const ModelContext = createContext();
 export function ModelProvider({ children }) {
   const [selectedModel, setSelectedModel] = useState(null);
   const [selectedTexture, setSelectedTexture] = useState(null);
+  const [textureScale, setTextureScale] = useState(1);
+  const [uvDimensions, setUVDimensions] = useState(null);
 
   const setModelAndTexture = (model, isTexture = false) => {
     if (isTexture) {
       setSelectedTexture(model);
+      setTextureScale(1);
     } else {
       setSelectedModel(model);
-      setSelectedTexture(null); // Reset texture when new model is selected
+      setSelectedTexture(null);
     }
   };
 
@@ -19,6 +22,10 @@ export function ModelProvider({ children }) {
     <ModelContext.Provider value={{ 
       selectedModel, 
       selectedTexture,
+      textureScale,
+      uvDimensions,
+      setUVDimensions,
+      setTextureScale,
       setModelAndTexture 
     }}>
       {children}
