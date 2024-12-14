@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Canvas3D from "./components/Canvas3D";
 import Navbar from "./components/Navbar";
 import SidePanel from "./components/SidePanel";
@@ -9,9 +9,15 @@ import "./styles.css";
 function AppContent() {
   const { selectedModel } = useModel();
   const [activePanel, setActivePanel] = useState(null);
+  const [uvAspect, setUvAspect] = useState(null);
 
   const handleSelectTumbler = (panelKey) => {
     setActivePanel(panelKey);
+  };
+
+  const handleUvAspectChange = (aspect) => {
+    setUvAspect(aspect);
+    console.log('UV Unwrap Aspect Ratio:', aspect);
   };
 
   return (
@@ -21,7 +27,7 @@ function AppContent() {
         <SidePanel activePanel={activePanel} setActivePanel={setActivePanel} />
         <div className="flex-1 ml-64">
           {selectedModel ? (
-            <Canvas3D />
+            <Canvas3D onUvAspectChange={handleUvAspectChange} />
           ) : (
             <SelectModelNotification onSelectTumbler={handleSelectTumbler} />
           )}

@@ -6,8 +6,9 @@ import * as THREE from 'three';
 import { OrbitControls } from "@react-three/drei";
 import { useModel } from "../context/ModelContext";
 
-const Scene = () => {
+const Scene = ({ onUvAspectChange }) => {
   const objRef = useRef();
+  const previousModelRef = useRef(null);
   const { selectedModel, selectedTexture, textureScale, setUVDimensions } = useModel();
 
   const obj = useLoader(OBJLoader, `/images/${selectedModel}.obj`);
@@ -15,40 +16,66 @@ const Scene = () => {
     useLoader(TextureLoader, `/images/${selectedTexture}.jpg`) : null;
 
   useEffect(() => {
-    if (obj) {
+    if (obj && selectedModel !== previousModelRef.current) {
+      previousModelRef.current = selectedModel;
+
       obj.traverse((child) => {
-        if (child.isMesh) {
+        if (child.isMesh && child.geometry) {
           const geometry = child.geometry;
-          const uvAttribute = geometry.attributes.uv;
-          const positionAttribute = geometry.attributes.position;
+          geometry.computeBoundingBox();
+          
+          const boundingBox = geometry.boundingBox;
+          const dimensions = {
+            width: boundingBox.max.x - boundingBox.min.x,
+            height: boundingBox.max.y - boundingBox.min.y,
+            depth: boundingBox.max.z - boundingBox.min.z
+          };
 
-          // Find UV bounds
-          let minU = Infinity, maxU = -Infinity;
-          let minV = Infinity, maxV = -Infinity;
+          // Calculate circumference using average of width and depth
+          const diameter = (dimensions.width + dimensions.depth) / 2;
+          const circumference = Math.PI * diameter;
+          const height = dimensions.height;
 
-          for (let i = 0; i < uvAttribute.count; i++) {
-            const u = uvAttribute.getX(i);
-            const v = uvAttribute.getY(i);
-            minU = Math.min(minU, u);
-            maxU = Math.max(maxU, u);
-            minV = Math.min(minV, v);
-            maxV = Math.max(maxV, v);
-          }
+          // Scale to match real-world dimensions (11" circumference)
+          const scale = 11 / circumference;
+          const scaledCircumference = 11; // Width when unwrapped
+          const scaledHeight = height * scale;
 
-          // Calculate real-world dimensions
-          const width = (maxU - minU) * 2048; // Base resolution multiplier
-          const height = (maxV - minV) * 2048;
+          // Convert to eighths for precise fractions
+          const widthInEighths = 11 * 8;  // 88 eighths
+          const heightInEighths = Math.round(scaledHeight * 8); // 35 eighths (4.375")
 
-          // Store UV dimensions in context
-          setUVDimensions({
-            width,
-            height,
-            aspectRatio: width / height
+          // Simplify the ratio
+          const gcd = (a, b) => b ? gcd(b, a % b) : a;
+          const divisor = gcd(widthInEighths, heightInEighths);
+          const ratioString = `${widthInEighths/divisor}:${heightInEighths/divisor}`;
+
+          console.log('UV Unwrap Analysis:', {
+            physicalMeasurements: {
+              circumference: `${scaledCircumference}"`,
+              height: `${Math.floor(scaledHeight)}" ${Math.round((scaledHeight % 1) * 8)}/8"`,
+            },
+            unwrapDimensions: {
+              width: scaledCircumference,
+              height: scaledHeight,
+            },
+            aspectRatio: ratioString,
+            inEighths: `${widthInEighths}:${heightInEighths}`
           });
+
+          setUVDimensions({
+            width: scaledCircumference,
+            height: scaledHeight,
+            ratio: ratioString
+          });
+
+          if (typeof onUvAspectChange === 'function') {
+            onUvAspectChange(ratioString);
+          }
         }
       });
     }
-  }, [obj, setUVDimensions]);
+  }, [selectedModel, obj]);
 
   useEffect(() => {
     if (obj && texture) {
@@ -83,6 +110,14 @@ const Scene = () => {
           child.material = [outsideMaterial, insideMaterial];
           child.material.needsUpdate = true;
         }
+      });
+
+      console.log('3D Texture Settings:', {
+        textureScale,
+        textureRepeat: texture.repeat,
+        textureOffset: texture.offset,
+        textureRotation: texture.rotation,
+        textureMatrix: texture.matrix
       });
     }
   }, [obj, texture, textureScale]);
