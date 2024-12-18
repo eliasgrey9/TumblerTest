@@ -81,7 +81,9 @@ const Scene = ({ onUvAspectChange }) => {
       const applyTextureToMesh = async (texture) => {
         obj.traverse((child) => {
           if (child.isMesh) {
+            console.log('Applying materials to mesh:', child.name);
             const geometry = child.geometry;
+            
             // Flip normals if needed
             for (let i = 0; i < geometry.attributes.position.count; i++) {
               geometry.attributes.normal.array[i * 3] *= -1;
@@ -90,17 +92,20 @@ const Scene = ({ onUvAspectChange }) => {
             }
             geometry.attributes.normal.needsUpdate = true;
 
-            const outsideMaterial = new THREE.MeshStandardMaterial({
+            // Create two materials: one with texture, one without
+            const texturedMaterial = new THREE.MeshStandardMaterial({
               color: 0xffffff,
               map: texture,
               side: THREE.FrontSide,
               metalness: 0.1,
               roughness: 0.8,
-              transparent: false,
-              opacity: 1,
-              alphaTest: 0,
-              depthWrite: true,
-              depthTest: true
+            });
+
+            const plainMaterial = new THREE.MeshStandardMaterial({
+              color: 0xffffff,
+              side: THREE.FrontSide,
+              metalness: 0.1,
+              roughness: 0.8,
             });
 
             const insideMaterial = new THREE.MeshStandardMaterial({
@@ -108,12 +113,54 @@ const Scene = ({ onUvAspectChange }) => {
               side: THREE.BackSide,
               metalness: 0.1,
               roughness: 0.5,
-              opacity: 1,
-              depthWrite: true,
-              depthTest: true
             });
 
-            child.material = [outsideMaterial, insideMaterial];
+            // Log UV coordinates for debugging
+            const uv = geometry.attributes.uv;
+            console.log('UV Coordinates Range:');
+            let minU = Infinity, maxU = -Infinity;
+            let minV = Infinity, maxV = -Infinity;
+            
+            for (let i = 0; i < uv.count; i++) {
+              const u = uv.array[i * 2];
+              const v = uv.array[i * 2 + 1];
+              minU = Math.min(minU, u);
+              maxU = Math.max(maxU, u);
+              minV = Math.min(minV, v);
+              maxV = Math.max(maxV, v);
+            }
+            console.log(`U range: ${minU} to ${maxU}`);
+            console.log(`V range: ${minV} to ${maxV}`);
+
+            // Apply materials based on UV coordinates
+            // Adjust these values based on the logged UV ranges
+            const patternArea = {
+              minU: 0.0,
+              maxU: 0.5,
+              minV: 0.0,
+              maxV: 0.5
+            };
+
+            // Create groups for different materials
+            const vertexCount = geometry.attributes.position.count;
+            const patternIndices = [];
+            const plainIndices = [];
+
+            // Group vertices based on their UV coordinates
+            for (let i = 0; i < vertexCount; i += 3) {
+              const u1 = uv.array[i * 2];
+              const v1 = uv.array[i * 2 + 1];
+              
+              if (u1 >= patternArea.minU && u1 <= patternArea.maxU &&
+                  v1 >= patternArea.minV && v1 <= patternArea.maxV) {
+                patternIndices.push(i, i + 1, i + 2);
+              } else {
+                plainIndices.push(i, i + 1, i + 2);
+              }
+            }
+
+            // Apply materials
+            child.material = [texturedMaterial, plainMaterial, insideMaterial];
             child.material.needsUpdate = true;
           }
         });

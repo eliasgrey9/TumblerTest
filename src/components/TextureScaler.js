@@ -7,14 +7,20 @@ const TextureScaler = ({ textureId }) => {
   
   if (selectedTexture !== textureId || !uvDimensions) return null;
 
-  // Calculate the base number of diamonds that fit in the UV space
+  // Increased scale for larger display
+  const scaleForDisplay = 800;
+  const canvasWidth = uvDimensions.width * scaleForDisplay;
+  const canvasHeight = uvDimensions.height * scaleForDisplay;
+  
+  console.log('Canvas Dimensions:', { canvasWidth, canvasHeight });
+
   const calculateBaseCount = () => {
-    const { width, height } = uvDimensions;
-    const aspectRatio = width / height;
+    const aspectRatio = canvasWidth / canvasHeight;
+    console.log('Aspect Ratio:', aspectRatio);
     
-    // We want at least 24 diamonds to start
-    const minDiamondsVertical = Math.ceil(Math.sqrt(24 / aspectRatio));
-    const minDiamondsHorizontal = Math.ceil(minDiamondsVertical * aspectRatio);
+    // Increased base diamond count for wider pattern
+    const minDiamondsHorizontal = Math.ceil(Math.sqrt(48 * aspectRatio));
+    const minDiamondsVertical = Math.ceil(minDiamondsHorizontal / aspectRatio);
     
     return {
       horizontal: minDiamondsHorizontal,
@@ -43,7 +49,7 @@ const TextureScaler = ({ textureId }) => {
   const validSteps = getValidSteps();
 
   return (
-    <div className="mt-2">
+    <div className="mt-2" style={{ width: '100%', maxWidth: '800px' }}>
       <input
         type="range"
         min={minScale}

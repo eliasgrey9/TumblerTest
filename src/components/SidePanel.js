@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import SecondaryPanel from "./SecondaryPanel";
+import TexturePreview from './TexturePreview';
 
 export default function SidePanel() {
   const [activePanel, setActivePanel] = useState(null);
