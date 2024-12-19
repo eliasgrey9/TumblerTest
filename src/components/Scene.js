@@ -38,8 +38,9 @@ const createSvgTexture = (svgString, size = 512) => {
 	});
 };
 
-const calculateGeometryDimensions = (geometry) => {
+const calculateGeometryDimensions = (geometry, patternArea) => {
 	const positions = geometry.attributes.position;
+	const uvs = geometry.attributes.uv;
 	let minX = Infinity,
 		maxX = -Infinity;
 	let minY = Infinity,
@@ -47,18 +48,42 @@ const calculateGeometryDimensions = (geometry) => {
 	let minZ = Infinity,
 		maxZ = -Infinity;
 
+	// Only consider vertices that are within our pattern UV area
 	for (let i = 0; i < positions.count; i++) {
-		const x = positions.array[i * 3];
-		const y = positions.array[i * 3 + 1];
-		const z = positions.array[i * 3 + 2];
+		const u = uvs.array[i * 2];
+		const v = uvs.array[i * 2 + 1];
 
-		minX = Math.min(minX, x);
-		maxX = Math.max(maxX, x);
-		minY = Math.min(minY, y);
-		maxY = Math.max(maxY, y);
-		minZ = Math.min(minZ, z);
-		maxZ = Math.max(maxZ, z);
+		// Check if this vertex is in the pattern area
+		if (
+			u >= patternArea.minU &&
+			u <= patternArea.maxU &&
+			v >= patternArea.minV &&
+			v <= patternArea.maxV
+		) {
+			const x = positions.array[i * 3];
+			const y = positions.array[i * 3 + 1];
+			const z = positions.array[i * 3 + 2];
+
+			minX = Math.min(minX, x);
+			maxX = Math.max(maxX, x);
+			minY = Math.min(minY, y);
+			maxY = Math.max(maxY, y);
+			minZ = Math.min(minZ, z);
+			maxZ = Math.max(maxZ, z);
+		}
 	}
+
+	// Log the dimensions we found
+	console.log("Pattern Area Dimensions:", {
+		width: maxX - minX,
+		height: maxY - minY,
+		depth: maxZ - minZ,
+		bounds: {
+			x: [minX, maxX],
+			y: [minY, maxY],
+			z: [minZ, maxZ],
+		},
+	});
 
 	return {
 		width: maxX - minX,
@@ -97,11 +122,21 @@ const Scene = ({ onUvAspectChange }) => {
 				if (child.isMesh) {
 					const geometry = child.geometry;
 					const uvAttribute = geometry.attributes.uv;
-					const geometryDimensions = calculateGeometryDimensions(geometry);
+					const patternArea = {
+						minU: 0.0,
+						maxU: 0.5, // Adjust these values based on your actual UV mapping
+						minV: 0.0,
+						maxV: 0.5,
+					};
+
+					// Calculate dimensions only for the pattern area
+					const geometryDimensions = calculateGeometryDimensions(
+						geometry,
+						patternArea,
+					);
 					const newGeometryRatio =
 						geometryDimensions.width / geometryDimensions.height;
-					console.log(newGeometryRatio);
-					setGeometryRatio(newGeometryRatio);
+					setGeometryRatio(1 / newGeometryRatio);
 
 					if (uvAttribute) {
 						let minU = Infinity,
