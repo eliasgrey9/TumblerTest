@@ -1,4 +1,8 @@
-export const createDiamondPattern = (uvDimensions, scale = 1) => {
+export const createDiamondPattern = (
+  uvDimensions,
+  geometryRatio,
+  scale = 1,
+) => {
   if (!uvDimensions) return null;
   
   const { width, height } = uvDimensions;
@@ -7,30 +11,46 @@ export const createDiamondPattern = (uvDimensions, scale = 1) => {
   // Calculate base number of diamonds that will fit in the smaller dimension
   const baseCount = Math.ceil(Math.sqrt(24));
   
-  // Calculate horizontal and vertical counts while maintaining square diamonds
+  // Calculate counts using the geometry ratio to intentionally create squished diamonds
   const verticalCount = baseCount * scale;
   const horizontalCount = Math.ceil(verticalCount * aspectRatio);
   
-  // Calculate a uniform diamond size based on the limiting dimension
-  const uniformSize = Math.min(width / horizontalCount, height / verticalCount);
+ // Calculate diamond dimensions
+  const diamondWidth = width / horizontalCount ;
+  // Use inverse ratio to squish in the opposite direction
+  const diamondHeight = (height / verticalCount) * (1 / geometryRatio);
   
-  // Log the dimensions
-  console.log('UV Dimensions:', { width, height, aspectRatio });
-  console.log('Diamond counts:', { horizontalCount, verticalCount });
-  console.log('Uniform diamond size:', uniformSize);
+  console.log('Pattern Generation:', {
+    uvDimensions,
+    geometryRatio,
+    inverseRatio: 1/geometryRatio,
+    aspectRatio,
+    diamondDimensions: {
+      width: diamondWidth,
+      height: diamondHeight,
+      squishFactor: 1/geometryRatio
+    },
+    counts: {
+      horizontal: horizontalCount,
+      vertical: verticalCount
+    }
+  });
 
-  const svg = `
+    const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
       <rect width="100%" height="100%" fill="white"/>
       <defs>
         <pattern 
           id="diamondPattern" 
-          width="${uniformSize}" 
-          height="${uniformSize}" 
+          width="${diamondWidth}" 
+          height="${diamondHeight}" 
           patternUnits="userSpaceOnUse"
         >
           <path 
-            d="M${uniformSize/2},0 L${uniformSize},${uniformSize/2} L${uniformSize/2},${uniformSize} L0,${uniformSize/2} Z" 
+            d="M${diamondWidth/2},0 
+              L${diamondWidth},${diamondHeight/2} 
+              L${diamondWidth/2},${diamondHeight} 
+              L0,${diamondHeight/2} Z" 
             fill="black"
           />
         </pattern>
@@ -38,6 +58,6 @@ export const createDiamondPattern = (uvDimensions, scale = 1) => {
       <rect width="100%" height="100%" fill="url(#diamondPattern)"/>
     </svg>
   `;
-
+  
   return svg;
-}; 
+};
