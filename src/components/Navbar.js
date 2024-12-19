@@ -5,7 +5,7 @@ export default function Navbar() {
   return (
     <nav className="bg-gray-800 text-white p-4 w-full h-50px">
       <div className="mx-4 flex justify-between items-center">
-        <div className="text-xl font-bold">Tumblers.Makex</div>
+        <div className="text-xl font-bold">Tumblers</div>
         <ul className="flex space-x-6 items-center">
           <li><a href="#" className="hover:text-gray-300">About</a></li>
           <li><a href="#" className="hover:text-gray-300">Contact</a></li>
