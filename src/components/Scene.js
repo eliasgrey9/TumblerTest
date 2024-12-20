@@ -155,10 +155,13 @@ const Scene = ({ onUvAspectChange }) => {
 	} = useModel();
 	const { invalidate } = useThree();
 
-	const obj = useLoader(
-		OBJLoader,
-		`http://localhost:3001/images/${selectedModel}.obj`,
-	);
+	// Had to add this because for some reason the server wouldn't serve objs, so I had to include a express server
+	// const obj = useLoader(
+	// 	OBJLoader,
+	// 	`http://localhost:3001/images/${selectedModel}.obj`,
+	// );
+
+	const obj = useLoader(OBJLoader, `/images/${selectedModel}.obj`);
 
 	useEffect(() => {
 		if (obj) {
