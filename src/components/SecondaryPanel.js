@@ -4,123 +4,113 @@ import TextureScaler from "./TextureScaler";
 import { exportScaledPattern } from "../utils/exportUtils";
 
 export default function SecondaryPanel({ title, options, onClose }) {
-  const { setModelAndTexture, selectedTexture, uvDimensions, textureScale } = useModel();
+	const { setModelAndTexture, selectedTexture, uvDimensions, textureScale } =
+		useModel();
 
-  const formatDisplayName = (option) => {
-    return option.replace(/_/g, ' ');
-  };
+	const formatDisplayName = (option) => {
+		return option.replace(/_/g, " ");
+	};
 
-  const handleSelection = (option) => {
-    setModelAndTexture(option, title === "Templates");
-  };
+	const handleSelection = (option) => {
+		setModelAndTexture(option, title === "Templates");
+	};
 
-  const handleExport = () => {
-    if (uvDimensions) {
-      exportScaledPattern(uvDimensions, textureScale);
-    }
-  };
+	const handleExport = () => {
+		if (uvDimensions) {
+			exportScaledPattern(uvDimensions, textureScale);
+		}
+	};
 
-  const renderPatternPreview = () => {
-    return (
-      <div className="bg-white p-4 rounded-lg">
-        <svg width="100" height="100" viewBox="0 0 100 100">
-          <path 
-            d="M50,0 L100,50 L50,100 L0,50 Z" 
-            fill="black"
-          />
-        </svg>
-        <p className="text-sm mt-2 text-center text-black">
-          Diamond Pattern
-        </p>
-      </div>
-    );
-  };
+	const renderPatternPreview = () => {
+		return (
+			<div className="bg-white p-4 rounded-lg">
+				<svg width="100" height="100" viewBox="0 0 100 100">
+					<path d="M50,0 L100,50 L50,100 L0,50 Z" fill="black" />
+				</svg>
+				<p className="text-sm mt-2 text-center text-black">Diamond Pattern</p>
+			</div>
+		);
+	};
 
-  return (
-    <div className="bg-gray-700 text-white w-64 h-full fixed left-64 top-0 shadow-lg z-50">
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">{title}</h2>
-          <button 
-            onClick={onClose}
-            className="bg-gray-600 hover:bg-gray-500 rounded-full w-8 h-8 flex items-center justify-center text-2xl"
-          >
-            ×
-          </button>
-        </div>
-        {title === "Templates" ? (
-          <div className="grid grid-cols-1 gap-4">
-            <div className="space-y-2">
-              <div 
-                className={`cursor-pointer transition-all ${
-                  selectedTexture === 'diamond_pattern' 
-                    ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-gray-700' 
-                    : 'hover:opacity-80'
-                }`}
-                onClick={() => handleSelection('diamond_pattern')}
-              >
-                {renderPatternPreview()}
-              </div>
-              {selectedTexture === 'diamond_pattern' && (
-                <div className="space-y-2">
-                  <TextureScaler textureId="diamond_pattern" />
-                  <button
-                    onClick={handleExport}
-                    className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded transition-colors"
-                  >
-                    Export SVG
-                  </button>
-                </div>
-              )}
-            </div>
+	return (
+		<div className="bg-gray-700 text-white w-64 h-full fixed left-64 top-0 shadow-lg z-50">
+			<div className="p-6">
+				<div className="flex justify-between items-center mb-6">
+					<h2 className="text-xl font-bold">{title}</h2>
+					<button
+						onClick={onClose}
+						className="bg-gray-600 hover:bg-gray-500 rounded-full w-8 h-8 flex items-center justify-center text-2xl"
+					>
+						×
+					</button>
+				</div>
+				{title === "Templates" ? (
+					<div className="grid grid-cols-1 gap-4">
+						<div className="space-y-2">
+							<div
+								className={`cursor-pointer transition-all ${
+									selectedTexture === "diamond_pattern"
+										? "ring-2 ring-blue-500 ring-offset-2 ring-offset-gray-700"
+										: "hover:opacity-80"
+								}`}
+								onClick={() => handleSelection("diamond_pattern")}
+							>
+								{renderPatternPreview()}
+							</div>
+							{selectedTexture === "diamond_pattern" && (
+								<div className="space-y-2">
+									<TextureScaler textureId="diamond_pattern" />
+								</div>
+							)}
+						</div>
 
-            {options.map((option, index) => (
-              <div key={index} className="space-y-2">
-                <div 
-                  className={`cursor-pointer transition-all ${
-                    selectedTexture === option 
-                      ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-gray-700' 
-                      : 'hover:opacity-80'
-                  }`}
-                  onClick={() => handleSelection(option)}
-                >
-                  <img 
-                    src={`/images/${option}.jpg`} 
-                    alt={formatDisplayName(option)}
-                    className="w-full h-24 rounded-lg"
-                  />
-                  <p className="text-sm mt-2 text-center">
-                    {formatDisplayName(option)}
-                  </p>
-                </div>
-                {selectedTexture === option && (
-                  <div className="space-y-2">
-                    <TextureScaler textureId={option} />
-                    <button
-                      onClick={handleExport}
-                      className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded transition-colors"
-                    >
-                      Export SVG
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <ul className="space-y-4">
-            {options.map((option, index) => (
-              <li 
-                key={index}
-                className="bg-gray-600 hover:bg-gray-500 p-3 rounded-lg cursor-pointer transition-all"
-                onClick={() => handleSelection(option)}
-              >
-                {formatDisplayName(option)}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
-} 
+						{options.map((option, index) => (
+							<div key={index} className="space-y-2">
+								<div
+									className={`cursor-pointer transition-all ${
+										selectedTexture === option
+											? "ring-2 ring-blue-500 ring-offset-2 ring-offset-gray-700"
+											: "hover:opacity-80"
+									}`}
+									onClick={() => handleSelection(option)}
+								>
+									<img
+										src={`/images/${option}.jpg`}
+										alt={formatDisplayName(option)}
+										className="w-full h-24 rounded-lg"
+									/>
+									<p className="text-sm mt-2 text-center">
+										{formatDisplayName(option)}
+									</p>
+								</div>
+								{selectedTexture === option && (
+									<div className="space-y-2">
+										<TextureScaler textureId={option} />
+										<button
+											onClick={handleExport}
+											className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded transition-colors"
+										>
+											Export SVG
+										</button>
+									</div>
+								)}
+							</div>
+						))}
+					</div>
+				) : (
+					<ul className="space-y-4">
+						{options.map((option, index) => (
+							<li
+								key={index}
+								className="bg-gray-600 hover:bg-gray-500 p-3 rounded-lg cursor-pointer transition-all"
+								onClick={() => handleSelection(option)}
+							>
+								{formatDisplayName(option)}
+							</li>
+						))}
+					</ul>
+				)}
+			</div>
+		</div>
+	);
+}

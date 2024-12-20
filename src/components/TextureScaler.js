@@ -1,69 +1,94 @@
-// src/components/TextureScaler.js
-import React from 'react';
-import { useModel } from '../context/ModelContext';
+import React, { useMemo } from "react";
+import { useModel } from "../context/ModelContext";
+
+function findValidCounts(ratio, maxCount = 20) {
+	const COVERAGE_MIN = 0.1001;
+	const validCombinations = [];
+	let index = 0; // Initialize index counter
+
+	for (let scale = 1; scale <= maxCount; scale++) {
+		const diamondWidth = ratio / scale;
+		const diamondHeight = 1 / scale;
+		const xCount = Math.floor(1 / diamondWidth);
+		const yCount = Math.floor(1 / diamondHeight);
+		const coverage = xCount * diamondWidth * (yCount * diamondHeight);
+		if (Math.abs(coverage - 1) < COVERAGE_MIN) {
+			validCombinations.push({
+				index: index++, // Add and increment index
+				scale,
+				xCount,
+				yCount,
+				totalShapes: xCount * yCount,
+				diamondWidth,
+				diamondHeight,
+			});
+		}
+	}
+	return validCombinations;
+}
 
 const TextureScaler = ({ textureId }) => {
-  const { selectedTexture, textureScale, setTextureScale, uvDimensions } = useModel();
-  
-  if (selectedTexture !== textureId || !uvDimensions) return null;
+	const {
+		selectedTexture,
+		textureScale,
+		setTextureScale,
+		uvDimensions,
+		geometryRatio,
+		count,
+		setCount,
+	} = useModel();
 
-  // Increased scale for larger display
-  const scaleForDisplay = 800;
-  const canvasWidth = uvDimensions.width * scaleForDisplay;
-  const canvasHeight = uvDimensions.height * scaleForDisplay;
-  
-  console.log('Canvas Dimensions:', { canvasWidth, canvasHeight });
+	if (selectedTexture !== textureId || !uvDimensions) return null;
 
-  const calculateBaseCount = () => {
-    const aspectRatio = canvasWidth / canvasHeight;
-    console.log('Aspect Ratio:', aspectRatio);
-    
-    // Increased base diamond count for wider pattern
-    const minDiamondsHorizontal = Math.ceil(Math.sqrt(48 * aspectRatio));
-    const minDiamondsVertical = Math.ceil(minDiamondsHorizontal / aspectRatio);
-    
-    return {
-      horizontal: minDiamondsHorizontal,
-      vertical: minDiamondsVertical
-    };
-  };
+	// Increased scale for larger display
+	const scaleForDisplay = 800;
+	const canvasWidth = uvDimensions.width * scaleForDisplay;
+	const canvasHeight = uvDimensions.height * scaleForDisplay;
 
-  const baseCount = calculateBaseCount();
-  const minScale = 1;
-  const maxScale = 5;
-  
-  // Calculate valid steps based on UV dimensions
-  const getValidSteps = () => {
-    const steps = [];
-    for (let i = minScale; i <= maxScale; i++) {
-      const horizontalDiamonds = baseCount.horizontal * i;
-      const verticalDiamonds = baseCount.vertical * i;
-      steps.push({
-        value: i,
-        diamonds: horizontalDiamonds * verticalDiamonds
-      });
-    }
-    return steps;
-  };
+	// Get valid combinations using memoization
+	const validCombinations = useMemo(() => {
+		return findValidCounts(geometryRatio, 100);
+	}, [geometryRatio]);
 
-  const validSteps = getValidSteps();
+	if (!validCombinations.length) {
+		console.log("no valid combos");
+		return null;
+	}
 
-  return (
-    <div className="mt-2" style={{ width: '100%', maxWidth: '800px' }}>
-      <input
-        type="range"
-        min={minScale}
-        max={maxScale}
-        step={1}
-        value={textureScale}
-        onChange={(e) => setTextureScale(parseInt(e.target.value))}
-        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-      />
-      <div className="text-sm text-gray-500 mt-1">
-        Scale: {textureScale}x ({validSteps.find(s => s.value === textureScale)?.diamonds} diamonds)
-      </div>
-    </div>
-  );
+	const minScale = 0;
+	const maxScale = validCombinations.length - 1;
+
+	const displayDimensions = {
+		width: canvasWidth / count.xCount,
+		height: canvasHeight / count.yCount,
+	};
+
+	const handleScaleChange = (e) => {
+		const newScale = parseInt(e.target.value);
+		setCount(validCombinations[newScale]);
+	};
+
+	return (
+		<div className="mt-2" style={{ width: "100%", maxWidth: "800px" }}>
+			<input
+				type="range"
+				min={minScale}
+				max={maxScale}
+				step={1}
+				value={count.index}
+				onChange={handleScaleChange}
+				className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+			/>
+			<div className="text-sm text-gray-500 mt-1">
+				Scale: {textureScale}x ({count.xCount}x{count.yCount} ={" "}
+				{count.totalShapes} diamonds)
+				<div className="text-xs">
+					Diamond size: {Math.round(displayDimensions.width)}x
+					{Math.round(displayDimensions.height)} pixels
+				</div>
+			</div>
+		</div>
+	);
 };
 
 export default TextureScaler;
