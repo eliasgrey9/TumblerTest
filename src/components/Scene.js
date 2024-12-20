@@ -41,19 +41,15 @@ const createSvgTexture = (svgString, size = 512) => {
 const calculateGeometryDimensions = (geometry, patternArea) => {
 	const positions = geometry.attributes.position;
 	const uvs = geometry.attributes.uv;
-	let minX = Infinity,
-		maxX = -Infinity;
-	let minY = Infinity,
-		maxY = -Infinity;
-	let minZ = Infinity,
-		maxZ = -Infinity;
 
-	// Only consider vertices that are within our pattern UV area
+	// Group vertices by Y coordinate (with some tolerance for floating point)
+	const slices = new Map();
+
 	for (let i = 0; i < positions.count; i++) {
 		const u = uvs.array[i * 2];
 		const v = uvs.array[i * 2 + 1];
 
-		// Check if this vertex is in the pattern area
+		// Only consider vertices in our UV pattern area
 		if (
 			u >= patternArea.minU &&
 			u <= patternArea.maxU &&
@@ -64,32 +60,84 @@ const calculateGeometryDimensions = (geometry, patternArea) => {
 			const y = positions.array[i * 3 + 1];
 			const z = positions.array[i * 3 + 2];
 
-			minX = Math.min(minX, x);
-			maxX = Math.max(maxX, x);
-			minY = Math.min(minY, y);
-			maxY = Math.max(maxY, y);
-			minZ = Math.min(minZ, z);
-			maxZ = Math.max(maxZ, z);
+			// Group by Y coordinate, rounded to 4 decimal places
+			const yKey = Math.round(y * 10000) / 10000;
+			if (!slices.has(yKey)) {
+				slices.set(yKey, new Set());
+			}
+
+			// Store unique positions at this Y level
+			slices.get(yKey).add(JSON.stringify([x, z]));
 		}
 	}
 
-	// Log the dimensions we found
-	console.log("Pattern Area Dimensions:", {
-		width: maxX - minX,
-		height: maxY - minY,
-		depth: maxZ - minZ,
-		bounds: {
-			x: [minX, maxX],
-			y: [minY, maxY],
-			z: [minZ, maxZ],
-		},
-	});
+	// Find the slice with the most points for circumference calculation
+	let maxPoints = 0;
+	let bestSlice = null;
+	for (const [y, points] of slices) {
+		if (points.size > maxPoints) {
+			maxPoints = points.size;
+			bestSlice = {
+				y,
+				points: Array.from(points).map((p) => JSON.parse(p)),
+			};
+		}
+	}
 
-	return {
-		width: maxX - minX,
-		height: maxY - minY,
-		depth: maxZ - minZ,
-	};
+	if (bestSlice) {
+		// Sort points by angle around the center
+		const points = bestSlice.points;
+		const center = points.reduce(
+			(acc, [x, z]) => ({
+				x: acc.x + x / points.length,
+				z: acc.z + z / points.length,
+			}),
+			{ x: 0, z: 0 },
+		);
+
+		const sortedPoints = points.sort((a, b) => {
+			const angleA = Math.atan2(a[1] - center.z, a[0] - center.x);
+			const angleB = Math.atan2(b[1] - center.z, b[0] - center.x);
+			return angleA - angleB;
+		});
+
+		// Calculate true circumference
+		let circumference = 0;
+		for (let i = 0; i < sortedPoints.length; i++) {
+			const current = sortedPoints[i];
+			const next = sortedPoints[(i + 1) % sortedPoints.length];
+			const dx = next[0] - current[0];
+			const dz = next[1] - current[1];
+			circumference += Math.sqrt(dx * dx + dz * dz);
+		}
+
+		// Get height (max Y - min Y)
+		let minY = Infinity,
+			maxY = -Infinity;
+		for (let i = 0; i < positions.count; i++) {
+			const y = positions.array[i * 3 + 1];
+			minY = Math.min(minY, y);
+			maxY = Math.max(maxY, y);
+		}
+		const height = maxY - minY;
+
+		console.log("Detailed measurements:", {
+			circumference,
+			height,
+			aspectRatio: height / circumference,
+			pointCount: sortedPoints.length,
+			yLevel: bestSlice.y,
+			uniqueYLevels: slices.size,
+		});
+
+		return {
+			width: circumference,
+			height,
+			aspectRatio: height / circumference,
+		};
+	}
+
+	return null;
 };
 
 const Scene = ({ onUvAspectChange }) => {
@@ -103,16 +151,12 @@ const Scene = ({ onUvAspectChange }) => {
 		geometryRatio,
 		setUVDimensions,
 		setGeometryRatio,
+		count,
 	} = useModel();
 	const { invalidate } = useThree();
 
 	const obj = useLoader(
 		OBJLoader,
-		`http://localhost:3001/images/${selectedModel}.obj`,
-	);
-
-	console.log(
-		"Loading model from:",
 		`http://localhost:3001/images/${selectedModel}.obj`,
 	);
 
@@ -124,19 +168,23 @@ const Scene = ({ onUvAspectChange }) => {
 					const uvAttribute = geometry.attributes.uv;
 					const patternArea = {
 						minU: 0.0,
-						maxU: 0.5, // Adjust these values based on your actual UV mapping
+						maxU: 1,
 						minV: 0.0,
-						maxV: 0.5,
+						maxV: 1,
 					};
 
-					// Calculate dimensions only for the pattern area
 					const geometryDimensions = calculateGeometryDimensions(
 						geometry,
 						patternArea,
 					);
-					const newGeometryRatio =
-						geometryDimensions.width / geometryDimensions.height;
-					setGeometryRatio(1 / newGeometryRatio);
+
+					if (geometryDimensions) {
+						// Rounding off to 2 decimals
+						const truncRatio =
+							Math.trunc(geometryDimensions.aspectRatio * 100) / 100;
+						// Not sure why but x2 gets us there
+						setGeometryRatio(truncRatio * 2);
+					}
 
 					if (uvAttribute) {
 						let minU = Infinity,
@@ -180,7 +228,6 @@ const Scene = ({ onUvAspectChange }) => {
 						}
 						geometry.attributes.normal.needsUpdate = true;
 
-						// Create two materials: one with texture, one without
 						const texturedMaterial = new THREE.MeshStandardMaterial({
 							color: 0xffffff,
 							map: texture,
@@ -203,9 +250,7 @@ const Scene = ({ onUvAspectChange }) => {
 							roughness: 0.5,
 						});
 
-						// Log UV coordinates for debugging
 						const uv = geometry.attributes.uv;
-						// console.log("UV Coordinates Range:");
 						let minU = Infinity,
 							maxU = -Infinity;
 						let minV = Infinity,
@@ -219,16 +264,12 @@ const Scene = ({ onUvAspectChange }) => {
 							minV = Math.min(minV, v);
 							maxV = Math.max(maxV, v);
 						}
-						// console.log(`U range: ${minU} to ${maxU}`);
-						// console.log(`V range: ${minV} to ${maxV}`);
 
-						// Apply materials based on UV coordinates
-						// Adjust these values based on the logged UV ranges
 						const patternArea = {
 							minU: 0.0,
-							maxU: 0.5,
+							maxU: 1,
 							minV: 0.0,
-							maxV: 0.5,
+							maxV: 1,
 						};
 
 						// Create groups for different materials
@@ -263,9 +304,16 @@ const Scene = ({ onUvAspectChange }) => {
 
 			const loadTexture = async () => {
 				try {
+					console.log("Creating diamond pattern with:", {
+						uvDimensions,
+						geometryRatio,
+						count,
+						textureScale,
+					});
 					const svgString = createDiamondPattern(
 						uvDimensions,
 						geometryRatio,
+						count,
 						textureScale,
 					);
 					const texture = await createSvgTexture(svgString);
@@ -284,6 +332,7 @@ const Scene = ({ onUvAspectChange }) => {
 		uvDimensions,
 		invalidate,
 		geometryRatio,
+		count,
 	]);
 
 	return (

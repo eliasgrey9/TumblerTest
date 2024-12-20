@@ -1,6 +1,31 @@
-// src/components/TextureScaler.js
-import React from "react";
+import React, { useMemo } from "react";
 import { useModel } from "../context/ModelContext";
+
+function findValidCounts(ratio, maxCount = 20) {
+	const COVERAGE_MIN = 0.1001;
+	const validCombinations = [];
+	let index = 0; // Initialize index counter
+
+	for (let scale = 1; scale <= maxCount; scale++) {
+		const diamondWidth = ratio / scale;
+		const diamondHeight = 1 / scale;
+		const xCount = Math.floor(1 / diamondWidth);
+		const yCount = Math.floor(1 / diamondHeight);
+		const coverage = xCount * diamondWidth * (yCount * diamondHeight);
+		if (Math.abs(coverage - 1) < COVERAGE_MIN) {
+			validCombinations.push({
+				index: index++, // Add and increment index
+				scale,
+				xCount,
+				yCount,
+				totalShapes: xCount * yCount,
+				diamondWidth,
+				diamondHeight,
+			});
+		}
+	}
+	return validCombinations;
+}
 
 const TextureScaler = ({ textureId }) => {
 	const {
@@ -9,6 +34,8 @@ const TextureScaler = ({ textureId }) => {
 		setTextureScale,
 		uvDimensions,
 		geometryRatio,
+		count,
+		setCount,
 	} = useModel();
 
 	if (selectedTexture !== textureId || !uvDimensions) return null;
@@ -18,66 +45,28 @@ const TextureScaler = ({ textureId }) => {
 	const canvasWidth = uvDimensions.width * scaleForDisplay;
 	const canvasHeight = uvDimensions.height * scaleForDisplay;
 
-	console.log("Canvas Dimensions:", {
-		canvasWidth,
-		canvasHeight,
-		geometryRatio,
-	});
+	// Get valid combinations using memoization
+	const validCombinations = useMemo(() => {
+		return findValidCounts(geometryRatio, 100);
+	}, [geometryRatio]);
 
-	const calculateBaseCount = () => {
-		const aspectRatio = uvDimensions.width / uvDimensions.height;
-		console.log("UV Aspect Ratio:", aspectRatio);
+	if (!validCombinations.length) {
+		console.log("no valid combos");
+		return null;
+	}
 
-		// Base number of diamonds calculation
-		const baseCount = Math.ceil(Math.sqrt(24));
+	const minScale = 0;
+	const maxScale = validCombinations.length - 1;
 
-		// Calculate counts using the geometry ratio for squished diamonds
-		const verticalCount = baseCount;
-		const horizontalCount = Math.ceil(verticalCount * aspectRatio);
-
-		// Log the calculations for debugging
-		console.log("Diamond Counts:", {
-			baseCount,
-			horizontal: horizontalCount,
-			vertical: verticalCount,
-			geometryRatio,
-		});
-
-		return {
-			horizontal: horizontalCount,
-			vertical: verticalCount,
-		};
+	const displayDimensions = {
+		width: canvasWidth / count.xCount,
+		height: canvasHeight / count.yCount,
 	};
 
-	const baseCount = calculateBaseCount();
-	const minScale = 1;
-	const maxScale = 5;
-
-	// Calculate valid steps based on UV dimensions and geometry ratio
-	const getValidSteps = () => {
-		const steps = [];
-		for (let i = minScale; i <= maxScale; i++) {
-			const horizontalDiamonds = baseCount.horizontal * i;
-			const verticalDiamonds = baseCount.vertical * i;
-
-			// Calculate actual diamond dimensions considering geometry ratio
-			const diamondWidth = canvasWidth / horizontalDiamonds;
-			const diamondHeight = (canvasHeight / verticalDiamonds) * geometryRatio;
-
-			steps.push({
-				value: i,
-				diamonds: horizontalDiamonds * verticalDiamonds,
-				dimensions: {
-					width: diamondWidth,
-					height: diamondHeight,
-				},
-			});
-		}
-		return steps;
+	const handleScaleChange = (e) => {
+		const newScale = parseInt(e.target.value);
+		setCount(validCombinations[newScale]);
 	};
-
-	const validSteps = getValidSteps();
-	const currentStep = validSteps.find((s) => s.value === textureScale);
 
 	return (
 		<div className="mt-2" style={{ width: "100%", maxWidth: "800px" }}>
@@ -86,18 +75,17 @@ const TextureScaler = ({ textureId }) => {
 				min={minScale}
 				max={maxScale}
 				step={1}
-				value={textureScale}
-				onChange={(e) => setTextureScale(parseInt(e.target.value))}
+				value={count.index}
+				onChange={handleScaleChange}
 				className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
 			/>
 			<div className="text-sm text-gray-500 mt-1">
-				Scale: {textureScale}x ({currentStep?.diamonds} diamonds)
-				{currentStep && (
-					<div className="text-xs">
-						Diamond size: {Math.round(currentStep.dimensions.width)}x
-						{Math.round(currentStep.dimensions.height)} pixels
-					</div>
-				)}
+				Scale: {textureScale}x ({count.xCount}x{count.yCount} ={" "}
+				{count.totalShapes} diamonds)
+				<div className="text-xs">
+					Diamond size: {Math.round(displayDimensions.width)}x
+					{Math.round(displayDimensions.height)} pixels
+				</div>
 			</div>
 		</div>
 	);

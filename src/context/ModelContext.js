@@ -8,6 +8,7 @@ export function ModelProvider({ children }) {
 	const [textureScale, setTextureScale] = useState(1);
 	const [uvDimensions, setUVDimensions] = useState(null);
 	const [geometryRatio, setGeometryRatio] = useState(1);
+	const [count, setCount] = useState([{ xCount: 1, yCount: 1 }]);
 
 	const setModelAndTexture = (model, isTexture = false) => {
 		if (isTexture) {
@@ -28,10 +29,12 @@ export function ModelProvider({ children }) {
 				textureScale,
 				uvDimensions,
 				geometryRatio,
+				count,
 				setUVDimensions,
 				setTextureScale,
 				setModelAndTexture,
 				setGeometryRatio,
+				setCount,
 			}}
 		>
 			{children}
